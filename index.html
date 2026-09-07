@@ -1,0 +1,193 @@
+<!-- ... existing code ... -->
+    <div class="container">
+        <h1>Log ➔ PRO.CSV Konverter</h1>
+        <span class="version-badge" style="background-color: #27ae60;">Version 3 (Monitor-Format VDV/IBIS)</span>
+        <p>Erzeugt die exakte Spaltenstruktur des Wagenbusmonitors inkl. Hex-Spacing und echter Zeilenumbrüche für Steuerzeichen.</p>
+        
+        <label class="file-upload" id="drop-zone">
+            <input type="file" id="fileInput" accept=".log,.txt">
+            <span id="drop-text">Klicke hier, um eine Datei auszuwählen, oder ziehe sie per Drag & Drop hierher.</span>
+        </label>
+        
+        <button id="downloadBtn" disabled>Als Monitor .PRO.CSV herunterladen</button>
+        
+        <div id="preview"></div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('drop-zone');
+        const dropText = document.getElementById('drop-text');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const preview = document.getElementById('preview');
+        let csvContent = "";
+        let originalFileName = "";
+
+        // VDV/IBIS Telegram Map based on the sample provided
+        const telegramMap = {
+            'l': { id: '001', desc: 'AD Liniennummer' },
+            'k': { id: '002', desc: 'Außenanzeigen AD Kursnummer' },
+            'z': { id: '003', desc: 'Außenanzeigen AD Zielnummer' },
+            'e': { id: '004', desc: 'Entwertermerkmale' },
+            'u': { id: '005', desc: 'Entwerter AD Uhrzeit' },
+            'd': { id: '006', desc: 'Entwerter AD Kalender-Datum' },
+            'a': { id: '020', desc: 'Anzeigen Status-Abfrage' },
+            'v': { id: '009b', desc: 'Voranzeige, Innenanzeige AD Haltestellen-Name' },
+            'x': { id: '010b', desc: 'Verlaufsanzeige Verlaufsanzeige Haltestellenindex' },
+            'aL': { id: '021a', desc: 'Streckenverlaufsanzeigen Übertragung Haltestellenname und Umsteigehinweise' },
+            'aA': { id: '[021]', desc: 'Anzeigen Text Ziel, Fahrweg' },
+            'lE': { id: '001a', desc: 'Liniennummer-Anzeiger AD Sonder-Anzeige' }
+        };
+
+        fileInput.addEventListener('change', handleFile);
+        
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.backgroundColor = '#ebf5fb'; });
+        dropZone.addEventListener('dragleave', () => dropZone.style.backgroundColor = '#f8fbfe');
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.backgroundColor = '#f8fbfe';
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                handleFile();
+            }
+        });
+
+        function handleFile() {
+            if (fileInput.files.length === 0) return;
+            
+            const file = fileInput.files[0];
+            originalFileName = file.name;
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const text = e.target.result;
+                processLog(text);
+            };
+            
+            reader.readAsText(file);
+        }
+        
+        // Helper to find Telegram Info
+        function getTelegramInfo(asciiStr) {
+            let typeId = "";
+            let desc = "";
+            
+            if (asciiStr.startsWith('aA')) { typeId = '[021]'; desc = 'Anzeigen Text Ziel, Fahrweg'; }
+            else if (asciiStr.startsWith('aL')) { typeId = '021a'; desc = 'Streckenverlaufsanzeigen Übertragung Haltestellenname und Umsteigehinweise'; }
+            else if (asciiStr.startsWith('lE')) { typeId = '001a'; desc = 'Liniennummer-Anzeiger AD Sonder-Anzeige'; }
+            else if (asciiStr.startsWith('zA')) { typeId = '022'; desc = 'Zusatzanzeige'; }
+            else {
+                const firstChar = asciiStr.charAt(0);
+                if (telegramMap[firstChar]) {
+                    typeId = telegramMap[firstChar].id;
+                    desc = telegramMap[firstChar].desc;
+                }
+            }
+            return { typeId, desc };
+        }
+
+        function processLog(text) {
+            const lines = text.split(/\r?\n/);
+            let csvRows = [];
+            let previewText = "";
+            let rowIndex = 1;
+            
+            // Base artificial tick/timestamp based on sample
+            let baseTick = 50619076; 
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                // Erwartetes Format der Quelle: Datum Zeit Hex ASCII
+                // z.B. "2026/09/04 10:56:48.615 6C3030300D2E l000<0D>."
+                const parts = line.split(' ');
+                if (parts.length >= 4) {
+                    const rawHex = parts[2];
+                    
+                    // 1. Hex mit Leerzeichen formatieren (z.B. " 6C 30 30 30 0D 2E")
+                    let formattedHex = " ";
+                    for(let j=0; j < rawHex.length; j+=2) {
+                        formattedHex += rawHex.substring(j, j+2) + " ";
+                    }
+                    formattedHex = formattedHex.trimRight();
+                    
+                    // 2. ASCII EXAKT aus dem Hexadezimal-Wert generieren (Byte für Byte).
+                    // Dadurch entstehen garantiert keine Abweichungen zwischen Hex und ASCII!
+                    let exactAscii = "";
+                    for(let j=0; j < rawHex.length; j+=2) {
+                        exactAscii += String.fromCharCode(parseInt(rawHex.substring(j, j+2), 16));
+                    }
+                    
+                    // 3. Telegram Info extrahieren (Code + Text)
+                    const tInfo = getTelegramInfo(exactAscii);
+                    
+                    // 4. Zeile aufbauen entsprechend:
+                    // Escape function für Felder mit Umbrüchen oder Quotes
+                    const escapeCsv = (str) => '"' + str.replace(/"/g, '""') + '"';
+                    
+                    let col1 = '"M"';
+                    let col2 = `"${rowIndex}"`;
+                    let col3 = `"${baseTick}"`;
+                    let col4 = '""';
+                    let col5 = '""';
+                    if (tInfo.typeId === '[021]') col5 = '"X"'; // Workaround
+                    
+                    let col6 = escapeCsv(exactAscii);
+                    let col7 = escapeCsv(formattedHex);
+                    let col8 = `"${tInfo.typeId}"`;
+                    let col9 = `"${tInfo.desc}"`;
+                    let col10 = '""';
+                    
+                    // Setze den Typ für bestimme Telegramme auf "-1"
+                    if (tInfo.typeId === '[021]' || tInfo.typeId === '020' || tInfo.typeId === '021a') col10 = '"-1"';
+                    
+                    const csvLine = [col1, col2, col3, col4, col5, col6, col7, col8, col9, col10].join(';');
+                    csvRows.push(csvLine);
+                    
+                    if (rowIndex <= 5) {
+                        previewText += `${rowIndex}: ${tInfo.desc || 'Unbekannt'} (Hex: ${formattedHex})\n`;
+                    }
+                    
+                    rowIndex++;
+                    baseTick += Math.floor(Math.random() * 800) + 100; // Simuliere ansteigenden Tick
+                }
+            }
+            
+            if (csvRows.length > 0) {
+                // Monitor erwartet CRLF als Zeilenumbruch für die CSV
+                csvContent = csvRows.join('\r\n');
+                preview.textContent = "Erfolgreich eingelesen (Vorschau):\n" + previewText;
+                preview.style.display = 'block';
+                downloadBtn.disabled = false;
+                dropText.innerHTML = "<strong>Datei konvertiert:</strong> " + originalFileName;
+            }
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            if (!csvContent) return;
+            
+            // WICHTIG: Die Datei als striktes 8-Bit (ANSI/ISO-8859-1) speichern.
+            // Der Monitor mag kein modernes UTF-8 oder Dateianfänge (BOM).
+            const bytes = new Uint8Array(csvContent.length);
+            for(let i = 0; i < csvContent.length; i++) {
+                bytes[i] = csvContent.charCodeAt(i) & 0xFF; // Schneidet alles auf 8-Bit ab
+            }
+            
+            const blob = new Blob([bytes], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            
+            let baseName = originalFileName.replace(/\.[^/.]+$/, "");
+            if (baseName === "") baseName = "export";
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', baseName + '.PRO.CSV');
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    </script>
+</body>
+</html>
