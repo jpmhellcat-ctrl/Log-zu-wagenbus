@@ -1,376 +1,1249 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" class="antialiased">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Log zu PRO.CSV Konverter</title>
-    
-    <!-- Lade Tailwind CSS für modernes, responsives Styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Lade die "Inter" Schriftart für ein klares Schriftbild -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
-                    }
-                }
-            }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log zu PRO.CSV Konverter · VDV 300 / IBIS</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Schriftarten: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
+          }
         }
-    </script>
-    <style>
-        /* Eigene Scrollbar für den Preview-Bereich */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
-    </style>
+      }
+    };
+  </script>
+
+  <style>
+    /* Schlanke Scrollbars */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.45); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.7); }
+
+    /* Sanfte Toast-Animation */
+    @keyframes slideInUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .toast-enter { animation: slideInUp 0.22s ease-out forwards; }
+  </style>
 </head>
 
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 font-sans selection:bg-indigo-100 selection:text-indigo-900">
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200 selection:bg-indigo-500/20 selection:text-indigo-700 dark:selection:text-indigo-300">
 
-    <main class="w-full max-w-3xl bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden transition-all">
-        
-        <!-- Header Bereich -->
-        <div class="bg-slate-900 px-8 py-10 text-center relative overflow-hidden">
-            <div class="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500 via-transparent to-transparent"></div>
-            <div class="relative z-10">
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-200 mb-4 border border-indigo-500/30">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    Version 3.1 (Monitor-Format VDV/IBIS)
-                </span>
-                <h1 class="text-3xl sm:text-4xl font-bold text-white mb-2 tracking-tight">Log <span class="text-indigo-400">➔</span> PRO.CSV</h1>
-                <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
-                    Wandle Roh-Logs in das exakte Spaltenstruktur-Format des Wagenbusmonitors um – inkl. Hex-Spacing und echter Zeilenumbrüche für Steuerzeichen.
-                </p>
+  <!-- Toast-Container (ersetzt alert/confirm) -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+    <!-- Hauptkarte -->
+    <main class="bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-slate-200/60 dark:shadow-black/40 border border-slate-200/80 dark:border-slate-800 overflow-hidden">
+
+      <!-- Header -->
+      <header class="bg-slate-900 dark:bg-slate-950 px-6 sm:px-8 py-7 relative overflow-hidden border-b border-slate-800">
+        <div class="absolute inset-0 opacity-25 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500 via-sky-500/20 to-transparent pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div class="flex flex-wrap items-center gap-2 mb-2.5">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                Version 4.1 · VDV 300 / IBIS
+              </span>
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-400/25">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                Exaktes &lt;CR&gt; (0x0D) &amp; XOR-Check
+              </span>
             </div>
-        </div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2.5">
+              Log <span class="text-indigo-400">➔</span> PRO.CSV
+              <span class="text-sm font-normal text-slate-400 hidden md:inline">Wagenbusmonitor Konverter</span>
+            </h1>
+            <p class="text-slate-400 text-sm mt-1 max-w-2xl">
+              Konvertiert IBIS-Rohlogs verlustfrei Byte-für-Byte in das WBMonitor-Format – mit echten Zeitstempeln, VDV-300-Prüfsummenanalyse und DIN-66003-Klartextvorschau.
+            </p>
+          </div>
 
-        <div class="p-6 sm:p-8">
-            <!-- Drag & Drop Zone -->
-            <label id="drop-zone" class="relative flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 hover:bg-indigo-50 hover:border-indigo-400 transition-all cursor-pointer group mb-6">
-                <input type="file" id="fileInput" accept=".log,.txt" class="hidden">
-                
-                <div class="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none" id="upload-content">
-                    <div class="p-4 bg-white rounded-full shadow-sm mb-3 group-hover:scale-110 group-hover:shadow-md transition-transform duration-300">
-                        <svg class="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                    </div>
-                    <p class="mb-1 text-sm text-slate-600 font-medium" id="drop-text-main"><span class="font-semibold text-indigo-600">Klicke hier</span>, um eine Datei auszuwählen</p>
-                    <p class="text-xs text-slate-400" id="drop-text-sub">oder ziehe sie per Drag & Drop hierher (.log, .txt)</p>
+          <!-- Theme Switcher & Reset -->
+          <div class="flex items-center gap-2 self-start sm:self-center">
+            <button id="themeToggleBtn" type="button" title="Hell/Dunkel umschalten" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors">
+              <svg id="sunIcon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+              <svg id="moonIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Hauptinhalt -->
+      <div class="p-6 sm:p-8 space-y-6">
+
+        <!-- Eingabe-Bereich: Datei-Upload & Optionen -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          <!-- Links: Drag & Drop + Direkt-Eingabe Tab -->
+          <div class="lg:col-span-7 flex flex-col gap-3">
+            <!-- Tabs -->
+            <div class="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl self-start border border-slate-200 dark:border-slate-700">
+              <button id="tabFileBtn" type="button" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm transition-all">
+                Datei laden (.log / .txt)
+              </button>
+              <button id="tabPasteBtn" type="button" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all">
+                Log direkt einfügen
+              </button>
+            </div>
+
+            <!-- Datei Drop-Zone -->
+            <label id="drop-zone" class="relative flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl bg-slate-50 dark:bg-slate-800/50 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/30 hover:border-indigo-400 dark:hover:border-indigo-500 transition-all cursor-pointer group">
+              <input type="file" id="fileInput" accept=".log,.txt,.csv" class="hidden">
+              <div class="flex flex-col items-center justify-center px-4 text-center pointer-events-none" id="upload-content">
+                <div class="p-3.5 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200/70 dark:border-slate-700 mb-3 group-hover:scale-105 transition-transform">
+                  <svg class="w-7 h-7 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                 </div>
+                <p class="text-sm text-slate-700 dark:text-slate-200 font-medium">
+                  <span class="font-semibold text-indigo-600 dark:text-indigo-400">Datei auswählen</span> oder hierher ziehen
+                </p>
+                <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Unterstützt .log und .txt (z. B. 2026/11/25 08:44:06.077 61380D2B ...)</p>
+              </div>
             </label>
 
-            <!-- Aktionen -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                
-                <!-- Download Bereich -->
-                <button id="downloadBtn" disabled class="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed text-white font-medium py-3.5 px-4 rounded-xl shadow-sm transition-all focus:ring-4 focus:ring-indigo-100 outline-none">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Als .PRO.CSV speichern
+            <!-- Direkt-Eingabe Textarea (versteckt bis Tab gewählt) -->
+            <div id="paste-zone" class="hidden flex-col gap-2">
+              <textarea id="rawLogInput" rows="6" placeholder="Log-Zeilen hier einfügen, z. B.:&#10;2026/11/25 08:44:06.077 61380D2B a8<0D>+&#10;2026/11/25 08:44:07.875 6432353131360D27 d25116<0D>'" class="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-3.5 font-mono text-xs text-slate-800 dark:text-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none resize-none h-44"></textarea>
+              <div class="flex justify-end">
+                <button id="parsePasteBtn" type="button" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                  Eingefügtes Log konvertieren
                 </button>
+              </div>
+            </div>
+          </div>
 
-                <!-- Testdaten Bereich -->
-                <div class="flex gap-2 w-full">
-                    <div class="relative flex-1">
-                        <select id="testDataSelect" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-4 pr-10 py-3.5 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all font-medium cursor-pointer h-full">
-                            <option value="ds003a">DS003a (Linie/Ziel)</option>
-                            <option value="ds021">DS021 (Text/Fahrweg)</option>
-                            <option value="ds021a">DS021a (Streckenverlauf)</option>
-                            <option value="ds021c">DS021c (Innenanzeige)</option>
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </div>
-                    </div>
-                    
-                    <button id="generateTestBtn" class="flex-none flex items-center justify-center bg-emerald-500 hover:bg-emerald-600 text-white font-medium px-5 py-3.5 rounded-xl shadow-sm transition-all focus:ring-4 focus:ring-emerald-100 outline-none tooltip" title="Testdaten generieren">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-                    </button>
-                </div>
+          <!-- Rechts: Einstellungen & Testdaten -->
+          <div class="lg:col-span-5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 flex flex-col justify-between gap-4">
+            <div class="space-y-3.5">
+              <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Konvertierungs-Optionen
+              </h2>
+
+              <!-- Zeitstempel Modus -->
+              <div class="space-y-1.5">
+                <label for="timestampMode" class="block text-xs font-medium text-slate-600 dark:text-slate-300">Startzeit-Berechnung (Spalte 3)</label>
+                <select id="timestampMode" class="w-full rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
+                  <option value="real_monotonic" selected>Echte Log-Zeitstempel (Zeitsprünge glätten)</option>
+                  <option value="real_exact">Echte Log-Zeitstempel (1:1 unverändert)</option>
+                  <option value="fixed_250">Fester Takt: +250 ms pro Telegramm</option>
+                  <option value="fixed_500">Fester Takt: +500 ms pro Telegramm</option>
+                </select>
+              </div>
+
+              <!-- Checkboxen -->
+              <div class="space-y-2 pt-1">
+                <label class="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input id="autoFixCrc" type="checkbox" class="mt-0.5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500">
+                  <span class="text-xs text-slate-600 dark:text-slate-300 leading-snug">
+                    <strong class="font-medium text-slate-800 dark:text-slate-100">Prüfsumme auto-reparieren</strong><br>
+                    <span class="text-slate-400 dark:text-slate-500">Berechnet fehlerhafte XOR-Prüfzeichen neu (0x7F)</span>
+                  </span>
+                </label>
+
+                <label class="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input id="markErrorsInCsv" type="checkbox" checked class="mt-0.5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500">
+                  <span class="text-xs text-slate-600 dark:text-slate-300 leading-snug">
+                    <strong class="font-medium text-slate-800 dark:text-slate-100">Fehler-Flag in CSV setzen</strong><br>
+                    <span class="text-slate-400 dark:text-slate-500">Setzt „X“ in Spalte 5 nur bei echtem CRC-/CR-Fehler</span>
+                  </span>
+                </label>
+              </div>
             </div>
 
-            <!-- Preview Box (Versteckt bis Daten da sind) -->
-            <div id="preview-container" class="hidden mt-2">
-                <div class="flex items-center justify-between mb-2 px-1">
-                    <h3 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        Vorschau (Erste Zeilen)
-                    </h3>
-                    <span id="preview-filename" class="text-xs font-mono text-slate-500 bg-slate-100 px-2 py-1 rounded"></span>
-                </div>
-                <div id="preview" class="bg-[#1e293b] text-[#e2e8f0] p-4 rounded-xl font-mono text-sm leading-relaxed overflow-y-auto max-h-64 shadow-inner border border-slate-700 whitespace-pre-wrap"></div>
+            <!-- Testdaten Generator -->
+            <div class="pt-3 border-t border-slate-200 dark:border-slate-700/80">
+              <label for="testDataSelect" class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Oder Testdaten laden (gültige VDV-300-Prüfsummen)</label>
+              <div class="flex gap-2">
+                <select id="testDataSelect" class="flex-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium px-3 py-2 outline-none focus:border-indigo-500">
+                  <option value="mixed_ax">Praxis-Mix (DS005/006/010e/020/aX)</option>
+                  <option value="ds003a">DS003a (Linie / Ziel / Text)</option>
+                  <option value="ds021">DS021 (Ziel &amp; Fahrweg aA)</option>
+                  <option value="ds021a">DS021a (Streckenverlauf aL)</option>
+                  <option value="ds021c">DS021c (Innenanzeige v / aL)</option>
+                </select>
+                <button id="generateTestBtn" type="button" class="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-sm transition-colors whitespace-nowrap">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                  Laden
+                </button>
+              </div>
             </div>
+          </div>
         </div>
+
+        <!-- Export-Aktionsleiste -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span id="activeFileBadge" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-mono border border-slate-200 dark:border-slate-700">
+              <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              <span id="activeFileName"></span>
+            </span>
+            <span id="binaryVerifyBadge" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-mono border border-emerald-200 dark:border-emerald-800/70">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              <span id="binaryVerifyText"></span>
+            </span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+            <button id="copyCsvBtn" type="button" disabled class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200 text-sm font-semibold transition-all">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+              CSV kopieren
+            </button>
+
+            <button id="downloadBtn" type="button" disabled class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 disabled:from-slate-300 disabled:to-slate-300 dark:disabled:from-slate-800 dark:disabled:to-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-md shadow-indigo-500/20 disabled:shadow-none transition-all">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              Als .PRO.CSV speichern
+            </button>
+          </div>
+        </div>
+
+        <!-- Diagnose & Vorschau-Bereich (sichtbar sobald Daten geladen sind) -->
+        <section id="resultsSection" class="hidden space-y-5 pt-4 border-t border-slate-200 dark:border-slate-800">
+
+          <!-- KPI-Karten -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl p-4">
+              <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Telegramme gesamt</p>
+              <p id="statTotal" class="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">0</p>
+              <p id="statSkipped" class="text-[11px] text-slate-400 mt-0.5">0 Zeilen übersprungen</p>
+            </div>
+
+            <div class="bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/60 rounded-2xl p-4">
+              <p class="text-xs font-medium text-emerald-700 dark:text-emerald-400">VDV-300 OK (&lt;CR&gt; + XOR)</p>
+              <p id="statValid" class="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1 font-mono">0</p>
+              <p id="statFixed" class="text-[11px] text-emerald-600/80 dark:text-emerald-400/70 mt-0.5">0 auto-repariert</p>
+            </div>
+
+            <div id="statErrorCard" class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl p-4 transition-colors">
+              <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Fehler (CRC / Framing)</p>
+              <p id="statErrors" class="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">0</p>
+              <p id="statErrorSub" class="text-[11px] text-slate-400 mt-0.5">Keine Protokollfehler</p>
+            </div>
+
+            <div class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl p-4">
+              <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Zeitspanne</p>
+              <p id="statTimeRange" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-1.5 font-mono truncate">--:--:--</p>
+              <p id="statDuration" class="text-[11px] text-slate-400 mt-0.5">Dauer: 0 s</p>
+            </div>
+          </div>
+
+          <!-- Filterleiste & Telegramm-Typ-Chips -->
+          <div class="space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="relative flex-1 max-w-md">
+                <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input id="searchInput" type="text" placeholder="Suchen nach Text, Haltestelle, Hex oder DS-Typ..." class="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2">
+                <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+                  <input id="onlyErrorsToggle" type="checkbox" class="rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+                  Nur Fehler
+                </label>
+
+                <select id="pageSizeSelect" class="rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 px-3 py-1.5 outline-none">
+                  <option value="50">50 Zeilen</option>
+                  <option value="150" selected>150 Zeilen</option>
+                  <option value="500">500 Zeilen</option>
+                  <option value="999999">Alle anzeigen</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Klickbare Typ-Filter-Pills -->
+            <div id="typeFilterBar" class="flex flex-wrap gap-1.5"></div>
+          </div>
+
+          <!-- WBMonitor-Vorschautabelle -->
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-950">
+            <div class="overflow-x-auto max-h-[460px] overflow-y-auto">
+              <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <tr>
+                    <th class="py-2.5 px-3 w-14">Nr.</th>
+                    <th class="py-2.5 px-3 w-28">Startzeit</th>
+                    <th class="py-2.5 px-3 w-20">Status</th>
+                    <th class="py-2.5 px-3 w-24">DS-Typ</th>
+                    <th class="py-2.5 px-3">Telegramm (WBMonitor-Ansicht)</th>
+                    <th class="py-2.5 px-3 hidden xl:table-cell">Klartext (DIN 66003)</th>
+                  </tr>
+                </thead>
+                <tbody id="previewTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/80 font-mono text-xs"></tbody>
+              </table>
+            </div>
+
+            <!-- Tabellen-Fußzeile mit Pagination -->
+            <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+              <span id="tableInfoText">Zeige 0 von 0 Telegrammen</span>
+              <div class="flex items-center gap-1.5">
+                <button id="prevPageBtn" type="button" class="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Zurück</button>
+                <span id="pageIndicator" class="px-2 font-mono">1 / 1</span>
+                <button id="nextPageBtn" type="button" class="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Weiter</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Byte-Inspektor für ausgewählte Zeile -->
+          <div id="rowInspector" class="hidden rounded-2xl bg-slate-900 text-slate-200 border border-slate-700 p-4 space-y-3">
+            <div class="flex items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-xs font-mono font-semibold" id="inspectorTitle">Zeile #1</span>
+                <span class="text-xs text-slate-400" id="inspectorDesc"></span>
+              </div>
+              <button id="closeInspectorBtn" type="button" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
+              <div>
+                <p class="text-slate-400 font-sans font-medium mb-1">Hex-Bytes (Spalte 7)</p>
+                <div id="inspectorHex" class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 break-all text-sky-300"></div>
+              </div>
+              <div>
+                <p class="text-slate-400 font-sans font-medium mb-1">Prüfsummen-Analyse (VDV 300 XOR mit 0x7F)</p>
+                <div id="inspectorCrc" class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 text-slate-200"></div>
+              </div>
+            </div>
+            <div class="text-xs font-mono">
+              <p class="text-slate-400 font-sans font-medium mb-1">Klartext (DIN 66003 Umlaute aufgelöst)</p>
+              <div id="inspectorDecoded" class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 break-all text-emerald-300"></div>
+            </div>
+          </div>
+
+        </section>
+      </div>
     </main>
 
-    <script>
-        const fileInput = document.getElementById('fileInput');
-        const dropZone = document.getElementById('drop-zone');
-        const dropTextMain = document.getElementById('drop-text-main');
-        const dropTextSub = document.getElementById('drop-text-sub');
-        const uploadContent = document.getElementById('upload-content');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const generateTestBtn = document.getElementById('generateTestBtn');
-        const testDataSelect = document.getElementById('testDataSelect');
-        const previewContainer = document.getElementById('preview-container');
-        const preview = document.getElementById('preview');
-        const previewFilename = document.getElementById('preview-filename');
-        
-        let csvContent = "";
-        let originalFileName = "";
+    <!-- Fußzeile -->
+    <footer class="text-center text-xs text-slate-400 dark:text-slate-600 mt-5">
+      Lokale Verarbeitung im Browser · Es werden keine Log-Daten an externe Server übertragen.
+    </footer>
+  </div>
 
-        // VDV/IBIS Telegram Map basierend auf deinen Vorlagen
-        const telegramMap = {
-            'l': { id: '001', desc: 'AD Liniennummer' },
-            'k': { id: '002', desc: 'Außenanzeigen AD Kursnummer' },
-            'z': { id: '003', desc: 'Außenanzeigen AD Zielnummer' },
-            'e': { id: '004', desc: 'Entwertermerkmale' },
-            'u': { id: '005', desc: 'Entwerter AD Uhrzeit' },
-            'd': { id: '006', desc: 'Entwerter AD Kalender-Datum' },
-            'a': { id: '020', desc: 'Anzeigen Status-Abfrage' },
-            'v': { id: '009b', desc: 'Voranzeige, Innenanzeige AD Haltestellen-Name' },
-            'x': { id: '010b', desc: 'Verlaufsanzeige Verlaufsanzeige Haltestellenindex' },
-            'aL': { id: '021a', desc: 'Streckenverlaufsanzeigen Übertragung Haltestellenname und Umsteigehinweise' },
-            'aA': { id: '[021]', desc: 'Anzeigen Text Ziel, Fahrweg' },
-            'lE': { id: '001a', desc: 'Liniennummer-Anzeiger AD Sonder-Anzeige' }
+  <script>
+    (() => {
+      'use strict';
+
+      // =========================================================================
+      // 1. VDV 300 / IBIS Telegramm-Definitionen (längster Präfix zuerst!)
+      //    Hinweis: Beschreibungen verwenden nur Latin-1-Zeichen für 8-Bit-ANSI-Export.
+      // =========================================================================
+      const TELEGRAM_DEFINITIONS = [
+        { prefix: 'aA', id: '021',  desc: 'Anzeigen Text Ziel, Fahrweg', expectsReply: true },
+        { prefix: 'aL', id: '021a', desc: 'Streckenverlaufsanzeige Haltestellenname und Umsteigehinweise', expectsReply: true },
+        { prefix: 'aX', id: '021c', desc: 'Erweiterte Streckenverlaufsanzeige Haltestellendaten', expectsReply: true },
+        { prefix: 'lE', id: '001a', desc: 'Liniennummer-Anzeiger AD Sonder-Anzeige', expectsReply: false },
+        { prefix: 'zA', id: '003a', desc: 'Aussenanzeige Zieltext und Fahrweg', expectsReply: false },
+        { prefix: 'zI', id: '003c', desc: 'Innenanzeige Zieltext / Haltestellenname', expectsReply: false },
+        { prefix: 'zN', id: '003',  desc: 'Aussenanzeigen AD Zielnummer Zusatz', expectsReply: false },
+        { prefix: 'xV', id: '010e', desc: 'Fahrplanlage / Verspaetung', expectsReply: false },
+        { prefix: 'xI', id: '010b', desc: 'Verlaufsanzeige Haltestellenindex', expectsReply: false },
+        { prefix: 'bA', id: '030',  desc: 'Ansagegeraet / Sprachausgabe', expectsReply: false },
+        { prefix: 'bE', id: '031',  desc: 'Ansagegeraet Sonderansage', expectsReply: false },
+        { prefix: 'l',  id: '001',  desc: 'AD Liniennummer', expectsReply: false },
+        { prefix: 'k',  id: '002',  desc: 'Aussenanzeigen AD Kursnummer', expectsReply: false },
+        { prefix: 'z',  id: '003',  desc: 'Aussenanzeigen AD Zielnummer', expectsReply: false },
+        { prefix: 'e',  id: '004',  desc: 'Entwertermerkmale', expectsReply: false },
+        { prefix: 'u',  id: '005',  desc: 'Entwerter AD Uhrzeit', expectsReply: false },
+        { prefix: 'd',  id: '006',  desc: 'Entwerter AD Kalender-Datum', expectsReply: false },
+        { prefix: 'h',  id: '007',  desc: 'Haltestellennummer', expectsReply: false },
+        { prefix: 'n',  id: '008',  desc: 'Liniennummer erweitert', expectsReply: false },
+        { prefix: 'v',  id: '009',  desc: 'Voranzeige, Innenanzeige AD Haltestellen-Name', expectsReply: false },
+        { prefix: 'x',  id: '010',  desc: 'Verlaufsanzeige Haltestellenindex', expectsReply: false },
+        { prefix: 'w',  id: '011',  desc: 'Wagennummer', expectsReply: false },
+        { prefix: 'r',  id: '015',  desc: 'Richtungsnummer', expectsReply: false },
+        { prefix: 'a',  id: '020',  desc: 'Anzeigen Status-Abfrage', expectsReply: true }
+      ];
+
+      // DIN 66003 (VDV 300 IBIS) Umlaut-Zuordnung für die Klartext-Vorschau
+      const DIN66003_MAP = {
+        '{': 'ä', '|': 'ö', '}': 'ü', '~': 'ß',
+        '[': 'Ä', '\\': 'Ö', ']': 'Ü'
+      };
+
+      // Benannte ASCII-Steuerzeichen für die WBMonitor-Darstellung
+      const CTRL_NAMES = {
+        0x00: '<NUL>', 0x01: '<$01>', 0x02: '<$02>', 0x03: '<$03>',
+        0x04: '<$04>', 0x05: '<$05>', 0x06: '<$06>', 0x07: '<$07>',
+        0x08: '<BS>',  0x09: '<TAB>', 0x0A: '<LF>',  0x0B: '<VT>',
+        0x0C: '<FF>',  0x0D: '<CR>',  0x0E: '<$0E>', 0x0F: '<$0F>',
+        0x1B: '<ESC>', 0x7F: '<$7F>'
+      };
+
+      // =========================================================================
+      // 2. Anwendungszustand (State)
+      // =========================================================================
+      const state = {
+        rawInputText: '',
+        originalFileName: '',
+        parsedRows: [],
+        filteredRows: [],
+        csvContent: '',
+        skippedLines: 0,
+        activeTypeFilter: 'ALL',
+        currentPage: 1,
+        pageSize: 150,
+        selectedRowIndex: null
+      };
+
+      // =========================================================================
+      // 3. DOM-Referenzen
+      // =========================================================================
+      const el = {
+        themeToggleBtn: document.getElementById('themeToggleBtn'),
+        sunIcon: document.getElementById('sunIcon'),
+        moonIcon: document.getElementById('moonIcon'),
+        tabFileBtn: document.getElementById('tabFileBtn'),
+        tabPasteBtn: document.getElementById('tabPasteBtn'),
+        dropZone: document.getElementById('drop-zone'),
+        pasteZone: document.getElementById('paste-zone'),
+        fileInput: document.getElementById('fileInput'),
+        uploadContent: document.getElementById('upload-content'),
+        rawLogInput: document.getElementById('rawLogInput'),
+        parsePasteBtn: document.getElementById('parsePasteBtn'),
+        timestampMode: document.getElementById('timestampMode'),
+        autoFixCrc: document.getElementById('autoFixCrc'),
+        markErrorsInCsv: document.getElementById('markErrorsInCsv'),
+        testDataSelect: document.getElementById('testDataSelect'),
+        generateTestBtn: document.getElementById('generateTestBtn'),
+        activeFileBadge: document.getElementById('activeFileBadge'),
+        activeFileName: document.getElementById('activeFileName'),
+        binaryVerifyBadge: document.getElementById('binaryVerifyBadge'),
+        binaryVerifyText: document.getElementById('binaryVerifyText'),
+        copyCsvBtn: document.getElementById('copyCsvBtn'),
+        downloadBtn: document.getElementById('downloadBtn'),
+        resultsSection: document.getElementById('resultsSection'),
+        statTotal: document.getElementById('statTotal'),
+        statSkipped: document.getElementById('statSkipped'),
+        statValid: document.getElementById('statValid'),
+        statFixed: document.getElementById('statFixed'),
+        statErrorCard: document.getElementById('statErrorCard'),
+        statErrors: document.getElementById('statErrors'),
+        statErrorSub: document.getElementById('statErrorSub'),
+        statTimeRange: document.getElementById('statTimeRange'),
+        statDuration: document.getElementById('statDuration'),
+        searchInput: document.getElementById('searchInput'),
+        onlyErrorsToggle: document.getElementById('onlyErrorsToggle'),
+        pageSizeSelect: document.getElementById('pageSizeSelect'),
+        typeFilterBar: document.getElementById('typeFilterBar'),
+        previewTableBody: document.getElementById('previewTableBody'),
+        tableInfoText: document.getElementById('tableInfoText'),
+        prevPageBtn: document.getElementById('prevPageBtn'),
+        nextPageBtn: document.getElementById('nextPageBtn'),
+        pageIndicator: document.getElementById('pageIndicator'),
+        rowInspector: document.getElementById('rowInspector'),
+        inspectorTitle: document.getElementById('inspectorTitle'),
+        inspectorDesc: document.getElementById('inspectorDesc'),
+        inspectorHex: document.getElementById('inspectorHex'),
+        inspectorCrc: document.getElementById('inspectorCrc'),
+        inspectorDecoded: document.getElementById('inspectorDecoded'),
+        closeInspectorBtn: document.getElementById('closeInspectorBtn'),
+        toastContainer: document.getElementById('toast-container')
+      };
+
+      // =========================================================================
+      // 4. Hilfsfunktionen (Toast, Escaping, VDV-300 Protokoll-Logik)
+      // =========================================================================
+
+      /** Zeigt eine nicht-blockierende Benachrichtigung (ersetzt alert) */
+      function showToast(message, type = 'info') {
+        const colors = {
+          success: 'bg-emerald-600 text-white border-emerald-500',
+          error: 'bg-rose-600 text-white border-rose-500',
+          warning: 'bg-amber-600 text-white border-amber-500',
+          info: 'bg-slate-800 text-white border-slate-700'
         };
+        const toast = document.createElement('div');
+        toast.className = `toast-enter pointer-events-auto px-4 py-3 rounded-xl shadow-lg border text-xs font-medium flex items-center gap-2.5 ${colors[type] || colors.info}`;
+        toast.textContent = message;
+        el.toastContainer.appendChild(toast);
 
-        // File Input Event
-        fileInput.addEventListener('change', handleFile);
-        
-        // Drag & Drop Events mit Tailwind Klassen-Toggling für visuelles Feedback
-        dropZone.addEventListener('dragover', (e) => { 
-            e.preventDefault(); 
-            dropZone.classList.add('bg-indigo-50', 'border-indigo-500');
-            dropZone.classList.remove('bg-slate-50', 'border-slate-300');
-        });
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('bg-indigo-50', 'border-indigo-500');
-            dropZone.classList.add('bg-slate-50', 'border-slate-300');
-        });
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('bg-indigo-50', 'border-indigo-500');
-            dropZone.classList.add('bg-slate-50', 'border-slate-300');
-            if (e.dataTransfer.files.length > 0) {
-                fileInput.files = e.dataTransfer.files;
-                handleFile();
-            }
-        });
+        setTimeout(() => {
+          toast.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateY(8px)';
+          setTimeout(() => toast.remove(), 260);
+        }, 3200);
+      }
 
-        // Testdaten-Generator
-        generateTestBtn.addEventListener('click', () => {
-            const selectedDS = testDataSelect.value;
-            originalFileName = `Testdaten_${selectedDS.toUpperCase()}.log`;
-            
-            let fakeLogLines = [];
-            switch(selectedDS) {
-                case 'ds003a':
-                    fakeLogLines = [
-                        "2026/09/07 12:00:00.000 6C3030300D2E", // l000
-                        "2026/09/07 12:00:00.500 6430343039360D2D", // d04096
-                        "2026/09/07 12:00:01.000 75313035360D05", // u1056
-                        "2026/09/07 12:00:01.500 7A323435300D0B", // z2450
-                        "2026/09/07 12:00:02.000 7A493553697373616368204261686E686F6620202020200D60", // zI Sissach Bahnhof
-                        "2026/09/07 12:00:02.500 7A4134457074696E67656E0A457074696E67656E0A457074696E67656E0A457074696E67656E0A2E4446364446364446364446362020202020202020202020202020200D73", // zA Eptingen
-                        "2026/09/07 12:00:03.000 7A4E3030300D76" // zN000
-                    ];
-                    break;
-                case 'ds021':
-                    fakeLogLines = [
-                        "2026/09/07 12:05:00.000 614131334765736368657220202020202020202020202020202020202020202020202020200A2E00000000202020202020202020200D19", // aA13Gescher
-                        "2026/09/07 12:05:01.000 614132334765736368657220202020202020202020202020202020202020202020202020200A2E00000000202020202020202020200D1A"  // aA23Gescher
-                    ];
-                    break;
-                case 'ds021a':
-                    fakeLogLines = [
-                        "2026/09/07 12:10:00.000 614C34323B033031042020202020202020202020202020202020202005202020202020202020202020202020202020200D61", // aL42; Platzhalter
-                        "2026/09/07 12:10:01.000 614C34303E0330310447796D6E617369756D050D38", // aL40> Gymnasium
-                        "2026/09/07 12:10:02.000 614C3431340330320445737465726E2047656C6467617474050D59", // aL414 Estern Geldgatt
-                        "2026/09/07 12:10:03.000 784930310D42" // xI01 (Haltestellenindex)
-                    ];
-                    break;
-                case 'ds021c':
-                    fakeLogLines = [
-                        "2026/09/07 12:15:00.000 7647796D6E617369756D2020202020202020202020202020200D7A", // vGymnasium (Innenanzeige)
-                        "2026/09/07 12:15:01.000 614C34303503393904050D6C", // aL405
-                        "2026/09/07 12:15:02.000 614C34313503313004476573636865722C2052617468617573050D65" // aL415 Gescher, Rathaus
-                    ];
-                    break;
-            }
-            
-            processLog(fakeLogLines.join('\n'));
-            updateUIForSuccess(`Testdaten ${selectedDS.toUpperCase()}`);
-        });
+      /** HTML-Escaping gegen kaputtes Rendering (z. B. bei '<' als Prüfzeichen 0x3C) */
+      function escapeHtml(str) {
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
 
-        function handleFile() {
-            if (fileInput.files.length === 0) return;
-            
-            const file = fileInput.files[0];
-            originalFileName = file.name;
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                const text = e.target.result;
-                processLog(text);
-                updateUIForSuccess(originalFileName);
-            };
-            
-            reader.readAsText(file);
+      /** Standard-CSV-Escaping (RFC 4180) */
+      function escapeCsv(str) {
+        return '"' + str.replace(/"/g, '""') + '"';
+      }
+
+      /** Formatiert ein Byte als 2-stelligen Großbuchstaben-Hexwert */
+      function toHexByte(b) {
+        return (b & 0xFF).toString(16).toUpperCase().padStart(2, '0');
+      }
+
+      /** Berechnet die VDV-300-XOR-Prüfsumme über alle Bytes bis inkl. <CR> */
+      function calculateVdvChecksum(bytesUpToCr) {
+        let xor = 0x7F;
+        for (let i = 0; i < bytesUpToCr.length; i++) {
+          xor ^= bytesUpToCr[i];
+        }
+        return xor & 0xFF;
+      }
+
+      /** Baut aus einem ASCII-Payload ein gültiges IBIS-Telegramm (Payload + 0x0D + XOR) als Hex */
+      function buildValidIbisHex(payloadBytes) {
+        const body = [...payloadBytes, 0x0D];
+        const crc = calculateVdvChecksum(body);
+        body.push(crc);
+        return body.map(toHexByte).join('');
+      }
+
+      /** Hilfsfunktion: String zu Byte-Array (Latin-1) */
+      function strToBytes(str) {
+        const arr = [];
+        for (let i = 0; i < str.length; i++) {
+          arr.push(str.charCodeAt(i) & 0xFF);
+        }
+        return arr;
+      }
+
+      /** Ermittelt Telegramm-Typ & Beschreibung anhand des Telegramm-Anfangs */
+      function getTelegramInfo(rawString) {
+        for (const def of TELEGRAM_DEFINITIONS) {
+          if (rawString.startsWith(def.prefix)) {
+            return def;
+          }
+        }
+        return { prefix: '?', id: '', desc: 'Unbekanntes Telegramm', expectsReply: false };
+      }
+
+      /** Parst einen Zeitstempel (HH:MM:SS[.mmm]) zu Millisekunden seit Mitternacht */
+      function parseTimestampToMs(line) {
+        const match = line.match(/\b(\d{2}):(\d{2}):(\d{2})(?:[.,](\d{1,3}))?\b/);
+        if (!match) return null;
+        const hh = parseInt(match[1], 10);
+        const mm = parseInt(match[2], 10);
+        const ss = parseInt(match[3], 10);
+        const ms = match[4] ? parseInt(match[4].padEnd(3, '0'), 10) : 0;
+        if (hh > 23 || mm > 59 || ss > 59) return null;
+        return ((hh * 3600 + mm * 60 + ss) * 1000) + ms;
+      }
+
+      /** Formatiert Millisekunden seit Mitternacht als HH:MM:SS.mmm */
+      function formatMsToTime(totalMs, withMs = false) {
+        const safeMs = ((totalMs % 86400000) + 86400000) % 86400000;
+        const hh = Math.floor(safeMs / 3600000);
+        const mm = Math.floor((safeMs % 3600000) / 60000);
+        const ss = Math.floor((safeMs % 60000) / 1000);
+        const ms = safeMs % 1000;
+        const base = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+        return withMs ? `${base}.${String(ms).padStart(3, '0')}` : base;
+      }
+
+      /** Extrahiert den Hex-String aus einer Log-Zeile (robust gegen verschiedene Trenner) */
+      function extractHexFromLine(line) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//')) return null;
+
+        const tokens = trimmed.split(/\s+/);
+
+        // Fall A: Standardformat "YYYY/MM/DD HH:MM:SS.mmm HEXSTRING [ASCII...]"
+        if (tokens.length >= 3 && /^[0-9A-Fa-f]{4,}$/.test(tokens[2]) && tokens[2].length % 2 === 0) {
+          return tokens[2].toUpperCase();
         }
 
-        function updateUIForSuccess(filename) {
-            // Zeige Erfolgs-Design im Drop-Bereich
-            dropZone.classList.add('border-emerald-400', 'bg-emerald-50');
-            uploadContent.innerHTML = `
-                <div class="p-3 bg-emerald-100 rounded-full shadow-sm mb-3">
-                    <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                </div>
-                <p class="mb-1 text-sm text-emerald-800 font-semibold">Konvertierung erfolgreich!</p>
-                <p class="text-xs text-emerald-600 truncate max-w-xs px-4" title="${filename}">${filename}</p>
+        // Fall B: "HH:MM:SS.mmm HEXSTRING ..."
+        if (tokens.length >= 2 && /^[0-9A-Fa-f]{4,}$/.test(tokens[1]) && tokens[1].length % 2 === 0) {
+          return tokens[1].toUpperCase();
+        }
+
+        // Fall C: Suche nach dem längsten gültigen geradzahligen Hex-Token (>= 4 Zeichen)
+        for (const tok of tokens) {
+          if (/^[0-9A-Fa-f]{4,}$/.test(tok) && tok.length % 2 === 0 && !/^\d{4}$/.test(tok)) {
+            return tok.toUpperCase();
+          }
+        }
+
+        // Fall D: Leerzeichen-getrennte Hex-Bytes (z. B. "61 38 0D 2B")
+        const spacedHexMatch = trimmed.match(/(?:^|\s)((?:[0-9A-Fa-f]{2}\s+){2,}[0-9A-Fa-f]{2})(?:\s|$)/);
+        if (spacedHexMatch) {
+          return spacedHexMatch[1].replace(/\s+/g, '').toUpperCase();
+        }
+
+        return null;
+      }
+
+      /** Rendert Bytes als WBMonitor-ähnliches HTML mit hervorgehobenen Steuerzeichen */
+      function renderWbMonitorHtml(bytes, hasError) {
+        let html = '';
+        for (let i = 0; i < bytes.length; i++) {
+          const b = bytes[i];
+          const isLast = (i === bytes.length - 1);
+          const isCrPos = (i === bytes.length - 2);
+
+          let tokenText;
+          let isControl = false;
+
+          if (b < 0x20 || b === 0x7F) {
+            isControl = true;
+            tokenText = CTRL_NAMES[b] || `<$${toHexByte(b)}>`;
+          } else if (b > 0x7F) {
+            isControl = true;
+            tokenText = `<$${toHexByte(b)}>`;
+          } else {
+            tokenText = escapeHtml(String.fromCharCode(b));
+          }
+
+          if (isControl) {
+            let badgeClass = 'bg-slate-200/90 dark:bg-slate-800 text-slate-700 dark:text-slate-300';
+            if (b === 0x0D && isCrPos) {
+              badgeClass = 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300';
+            } else if (hasError && (isLast || isCrPos)) {
+              badgeClass = 'bg-rose-500 text-white';
+            } else if (b === 0x0A) {
+              badgeClass = 'bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300';
+            }
+            html += `<span class="inline-block px-1 mx-[0.5px] rounded text-[11px] font-semibold ${badgeClass}">${escapeHtml(tokenText)}</span>`;
+          } else if (hasError && isLast) {
+            html += `<span class="inline-block px-1 rounded bg-rose-500 text-white font-semibold">${tokenText}</span>`;
+          } else {
+            html += tokenText;
+          }
+        }
+        return html;
+      }
+
+      /** Dekodiert den Nutzdaten-Teil (ohne <CR> + CRC) mit DIN-66003-Umlauten */
+      function decodeReadableText(bytes) {
+        // Schneide abschließendes <CR> + Prüfzeichen ab, falls vorhanden
+        const endIdx = (bytes.length >= 2 && bytes[bytes.length - 2] === 0x0D)
+          ? bytes.length - 2
+          : bytes.length;
+
+        let out = '';
+        for (let i = 0; i < endIdx; i++) {
+          const b = bytes[i];
+          if (b === 0x0A) {
+            out += ' ↵ ';
+          } else if (b < 0x20 || b === 0x7F) {
+            out += ` · `;
+          } else {
+            const ch = String.fromCharCode(b);
+            out += DIN66003_MAP[ch] || ch;
+          }
+        }
+        return out.replace(/\s+/g, ' ').trim();
+      }
+
+      // =========================================================================
+      // 5. Haupt-Konvertierungslogik
+      // =========================================================================
+      function processLog(text) {
+        try {
+          state.rawInputText = text;
+          const lines = text.split(/\r?\n/);
+
+          const timestampMode = el.timestampMode.value;
+          const autoFixCrc = el.autoFixCrc.checked;
+          const markErrorsInCsv = el.markErrorsInCsv.checked;
+
+          const parsedRows = [];
+          const csvRows = [];
+          let skippedLines = 0;
+          let validCount = 0;
+          let errorCount = 0;
+          let fixedCount = 0;
+
+          let rowIndex = 1;
+          let lastTickMs = null;
+          const fallbackStartMs = 8 * 3600 * 1000; // 08:00:00.000 falls keine Zeit im Log
+
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+
+            const rawHex = extractHexFromLine(line);
+            if (!rawHex) {
+              skippedLines++;
+              continue;
+            }
+
+            // Hex-String in echtes Byte-Array konvertieren
+            const bytes = [];
+            for (let j = 0; j < rawHex.length; j += 2) {
+              bytes.push(parseInt(rawHex.substring(j, j + 2), 16));
+            }
+            if (bytes.length < 2) {
+              skippedLines++;
+              continue;
+            }
+
+            // VDV-300-Validierung: Vorletztes Byte muss 0x0D (<CR>) sein, letztes Byte = XOR-Prüfsumme
+            const hasCrBeforeChecksum = bytes[bytes.length - 2] === 0x0D;
+            const actualCrc = bytes[bytes.length - 1];
+            const expectedCrc = calculateVdvChecksum(bytes.slice(0, bytes.length - 1));
+            let crcValid = hasCrBeforeChecksum && (actualCrc === expectedCrc);
+            let wasFixed = false;
+
+            // Optional: Fehlerhafte Prüfsumme automatisch reparieren (nur wenn <CR> an korrekter Position)
+            if (!crcValid && hasCrBeforeChecksum && autoFixCrc) {
+              bytes[bytes.length - 1] = expectedCrc;
+              crcValid = true;
+              wasFixed = true;
+              fixedCount++;
+            }
+
+            if (crcValid) {
+              validCount++;
+            } else {
+              errorCount++;
+            }
+
+            // Exaktes 8-Bit-Telegramm für Spalte 6 erzeugen!
+            // WICHTIG: 0x0D bleibt echtes '\r' (<CR>), 0x0A bleibt echtes '\n' (<LF>)!
+            let exactRawString = '';
+            let formattedHex = '';
+            for (let j = 0; j < bytes.length; j++) {
+              exactRawString += String.fromCharCode(bytes[j]);
+              formattedHex += ' ' + toHexByte(bytes[j]);
+            }
+
+            // Zeitstempel berechnen (Millisekunden seit Mitternacht)
+            let tickMs;
+            const logMs = parseTimestampToMs(line);
+
+            if (timestampMode === 'fixed_250') {
+              tickMs = lastTickMs === null ? (logMs ?? fallbackStartMs) : lastTickMs + 250;
+            } else if (timestampMode === 'fixed_500') {
+              tickMs = lastTickMs === null ? (logMs ?? fallbackStartMs) : lastTickMs + 500;
+            } else if (timestampMode === 'real_exact') {
+              tickMs = logMs !== null ? logMs : (lastTickMs === null ? fallbackStartMs : lastTickMs + 250);
+            } else {
+              // Standard: real_monotonic -> Echte Zeit aus Log, aber keine Rückwärtssprünge
+              if (logMs !== null) {
+                tickMs = (lastTickMs !== null && logMs < lastTickMs) ? lastTickMs + 10 : logMs;
+              } else {
+                tickMs = lastTickMs === null ? fallbackStartMs : lastTickMs + 250;
+              }
+            }
+            lastTickMs = tickMs;
+
+            // Telegramm-Typ bestimmen
+            const tInfo = getTelegramInfo(exactRawString);
+
+            // WBMonitor .PRO.CSV Spaltenaufbau (10 Spalten, Semikolon-getrennt)
+            const col1 = '"M"';
+            const col2 = `"${rowIndex}"`;
+            const col3 = `"${tickMs}"`;
+            const col4 = '""';
+            const col5 = (!crcValid && markErrorsInCsv) ? '"X"' : '""';
+            const col6 = escapeCsv(exactRawString);
+            const col7 = escapeCsv(formattedHex);
+            const col8 = `"${tInfo.id}"`;
+            const col9 = escapeCsv(tInfo.desc);
+            const col10 = tInfo.expectsReply ? '"-1"' : '""';
+
+            const csvLine = [col1, col2, col3, col4, col5, col6, col7, col8, col9, col10].join(';');
+            csvRows.push(csvLine);
+
+            const decodedText = decodeReadableText(bytes);
+
+            parsedRows.push({
+              index: rowIndex,
+              tickMs,
+              timeFormatted: formatMsToTime(tickMs, true),
+              bytes,
+              formattedHex: formattedHex.trim(),
+              typeId: tInfo.id || '???',
+              typePrefix: tInfo.prefix,
+              desc: tInfo.desc,
+              hasCrBeforeChecksum,
+              actualCrc: bytes[bytes.length - 1],
+              originalCrc: actualCrc,
+              expectedCrc,
+              crcValid,
+              wasFixed,
+              decodedText,
+              wbHtml: renderWbMonitorHtml(bytes, !crcValid),
+              searchIndex: `${rowIndex} ${tInfo.id} ${tInfo.prefix} ${tInfo.desc} ${decodedText} ${formattedHex}`.toLowerCase()
+            });
+
+            rowIndex++;
+          }
+
+          if (parsedRows.length === 0) {
+            showToast('Keine gültigen Hex-Telegramme im Log gefunden.', 'warning');
+            return false;
+          }
+
+          state.parsedRows = parsedRows;
+          state.csvContent = csvRows.join('\r\n') + '\r\n'; // Windows CRLF inkl. abschließendem Zeilenumbruch für WBMonitor
+          state.skippedLines = skippedLines;
+          state.activeTypeFilter = 'ALL';
+          state.currentPage = 1;
+          state.selectedRowIndex = null;
+
+          // Binär-Check: Zähle gültige <CR> (0x0D) Telegramm-Abschlüsse in den Ausgabedaten
+          const crValidCount = parsedRows.filter((r) => r.hasCrBeforeChecksum).length;
+          el.binaryVerifyBadge.classList.remove('hidden');
+          if (crValidCount === parsedRows.length) {
+            el.binaryVerifyBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-mono border border-emerald-200 dark:border-emerald-800/70';
+            el.binaryVerifyText.textContent = `Binär-Check OK: ${crValidCount}/${parsedRows.length}× <CR> (0x0D)`;
+          } else {
+            el.binaryVerifyBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 font-mono border border-amber-200 dark:border-amber-800/70';
+            el.binaryVerifyText.textContent = `Achtung: nur ${crValidCount}/${parsedRows.length}× <CR> (0x0D)`;
+          }
+
+          el.rowInspector.classList.add('hidden');
+          updateDashboard(validCount, errorCount, fixedCount);
+          renderTypeFilters();
+          applyFiltersAndRender();
+
+          return true;
+        } catch (err) {
+          console.error('Fehler beim Verarbeiten des Logs:', err);
+          showToast('Fehler beim Verarbeiten der Datei: ' + err.message, 'error');
+          return false;
+        }
+      }
+
+      // =========================================================================
+      // 6. UI-Rendering (KPIs, Filter-Pills, Tabelle, Inspektor)
+      // =========================================================================
+      function updateDashboard(validCount, errorCount, fixedCount) {
+        const rows = state.parsedRows;
+        el.resultsSection.classList.remove('hidden');
+        el.downloadBtn.disabled = false;
+        el.copyCsvBtn.disabled = false;
+
+        el.activeFileBadge.classList.remove('hidden');
+        el.activeFileName.textContent = state.originalFileName;
+
+        el.statTotal.textContent = rows.length.toLocaleString('de-DE');
+        el.statSkipped.textContent = `${state.skippedLines} Zeile(n) übersprungen`;
+
+        el.statValid.textContent = validCount.toLocaleString('de-DE');
+        el.statFixed.textContent = fixedCount > 0 ? `${fixedCount} auto-repariert` : '100% gültige Struktur';
+
+        el.statErrors.textContent = errorCount.toLocaleString('de-DE');
+        if (errorCount > 0) {
+          el.statErrorCard.className = 'bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/70 rounded-2xl p-4 transition-colors';
+          el.statErrors.className = 'text-2xl font-bold text-rose-700 dark:text-rose-300 mt-1 font-mono';
+          el.statErrorSub.textContent = 'Prüfsumme oder <CR> fehlerhaft';
+          el.statErrorSub.className = 'text-[11px] text-rose-600/80 dark:text-rose-400/80 mt-0.5';
+        } else {
+          el.statErrorCard.className = 'bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl p-4 transition-colors';
+          el.statErrors.className = 'text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono';
+          el.statErrorSub.textContent = 'Keine Protokollfehler';
+          el.statErrorSub.className = 'text-[11px] text-slate-400 mt-0.5';
+        }
+
+        const firstMs = rows[0].tickMs;
+        const lastMs = rows[rows.length - 1].tickMs;
+        el.statTimeRange.textContent = `${formatMsToTime(firstMs)} – ${formatMsToTime(lastMs)}`;
+        const durSec = Math.max(0, Math.round((lastMs - firstMs) / 1000));
+        const mins = Math.floor(durSec / 60);
+        const secs = durSec % 60;
+        el.statDuration.textContent = mins > 0 ? `Dauer: ${mins} Min. ${secs} Sek.` : `Dauer: ${secs} Sek.`;
+      }
+
+      function renderTypeFilters() {
+        const counts = new Map();
+        for (const row of state.parsedRows) {
+          const key = `${row.typePrefix} (${row.typeId})`;
+          counts.set(key, (counts.get(key) || 0) + 1);
+        }
+
+        const sortedTypes = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+        let html = `<button type="button" data-type="ALL" class="type-pill px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${state.activeTypeFilter === 'ALL' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}">Alle (${state.parsedRows.length})</button>`;
+
+        for (const [label, count] of sortedTypes) {
+          const isActive = state.activeTypeFilter === label;
+          html += `<button type="button" data-type="${escapeHtml(label)}" class="type-pill px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${isActive ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}">${escapeHtml(label)} · ${count}</button>`;
+        }
+
+        el.typeFilterBar.innerHTML = html;
+      }
+
+      function applyFiltersAndRender() {
+        const query = el.searchInput.value.trim().toLowerCase();
+        const onlyErrors = el.onlyErrorsToggle.checked;
+
+        state.filteredRows = state.parsedRows.filter((row) => {
+          if (onlyErrors && row.crcValid) return false;
+          if (state.activeTypeFilter !== 'ALL') {
+            const label = `${row.typePrefix} (${row.typeId})`;
+            if (label !== state.activeTypeFilter) return false;
+          }
+          if (query && !row.searchIndex.includes(query)) return false;
+          return true;
+        });
+
+        const totalPages = Math.max(1, Math.ceil(state.filteredRows.length / state.pageSize));
+        if (state.currentPage > totalPages) state.currentPage = totalPages;
+
+        renderTable();
+      }
+
+      function renderTable() {
+        const total = state.filteredRows.length;
+        const totalPages = Math.max(1, Math.ceil(total / state.pageSize));
+        const start = (state.currentPage - 1) * state.pageSize;
+        const end = Math.min(total, start + state.pageSize);
+        const slice = state.filteredRows.slice(start, end);
+
+        if (slice.length === 0) {
+          el.previewTableBody.innerHTML = `
+            <tr>
+              <td colspan="6" class="py-10 text-center font-sans text-sm text-slate-400">
+                Keine Telegramme entsprechen dem aktuellen Filter.
+              </td>
+            </tr>`;
+        } else {
+          const fragment = document.createDocumentFragment();
+          for (const row of slice) {
+            const tr = document.createElement('tr');
+            const isSelected = state.selectedRowIndex === row.index;
+            tr.dataset.rowIndex = row.index;
+            tr.className = `cursor-pointer transition-colors ${
+              isSelected
+                ? 'bg-indigo-50/90 dark:bg-indigo-950/50'
+                : (!row.crcValid
+                    ? 'bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-50 dark:hover:bg-rose-950/35'
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-900/70')
+            }`;
+
+            const statusBadge = row.crcValid
+              ? (row.wasFixed
+                  ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 text-[10px] font-sans font-semibold">FIX</span>`
+                  : `<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 text-[10px] font-sans font-semibold">OK</span>`)
+              : `<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 text-[10px] font-sans font-semibold">ERR</span>`;
+
+            tr.innerHTML = `
+              <td class="py-2 px-3 text-slate-400 select-none">${row.index}</td>
+              <td class="py-2 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">${row.timeFormatted}</td>
+              <td class="py-2 px-3 whitespace-nowrap">${statusBadge}</td>
+              <td class="py-2 px-3 whitespace-nowrap">
+                <span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-300 font-semibold">${escapeHtml(row.typeId)}</span>
+              </td>
+              <td class="py-2 px-3 text-slate-800 dark:text-slate-100 break-all leading-relaxed">${row.wbHtml}</td>
+              <td class="py-2 px-3 hidden xl:table-cell font-sans text-slate-500 dark:text-slate-400 max-w-xs truncate" title="${escapeHtml(row.decodedText)}">${escapeHtml(row.decodedText)}</td>
             `;
-            
-            // UI freischalten
-            downloadBtn.disabled = false;
-            previewContainer.classList.remove('hidden');
-            previewFilename.textContent = filename;
-            
-            // Setze nach 3 Sekunden auf Standard zurück, damit man optisch erneut Dateien reinziehen kann
-            setTimeout(() => {
-                if(dropZone.classList.contains('border-emerald-400')) {
-                    dropZone.classList.remove('border-emerald-400', 'bg-emerald-50');
-                    uploadContent.innerHTML = `
-                        <div class="p-4 bg-white rounded-full shadow-sm mb-3 group-hover:scale-110 group-hover:shadow-md transition-transform duration-300">
-                            <svg class="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                        </div>
-                        <p class="mb-1 text-sm text-slate-600 font-medium" id="drop-text-main"><span class="font-semibold text-indigo-600">Klicke hier</span>, um eine neue Datei auszuwählen</p>
-                        <p class="text-xs text-slate-400" id="drop-text-sub">oder ziehe sie per Drag & Drop hierher</p>
-                    `;
-                }
-            }, 4000);
+            fragment.appendChild(tr);
+          }
+          el.previewTableBody.innerHTML = '';
+          el.previewTableBody.appendChild(fragment);
         }
 
-        // Helfer für Telegramm-Typ
-        function getTelegramInfo(asciiStr) {
-            let typeId = "";
-            let desc = "";
-            
-            if (asciiStr.startsWith('aA')) { typeId = '[021]'; desc = 'Anzeigen Text Ziel, Fahrweg'; }
-            else if (asciiStr.startsWith('aL')) { typeId = '021a'; desc = 'Streckenverlaufsanzeigen Übertragung Haltestellenname und Umsteigehinweise'; }
-            else if (asciiStr.startsWith('lE')) { typeId = '001a'; desc = 'Liniennummer-Anzeiger AD Sonder-Anzeige'; }
-            else if (asciiStr.startsWith('zA')) { typeId = '022'; desc = 'Zusatzanzeige'; }
-            else {
-                const firstChar = asciiStr.charAt(0);
-                if (telegramMap[firstChar]) {
-                    typeId = telegramMap[firstChar].id;
-                    desc = telegramMap[firstChar].desc;
-                }
-            }
-            return { typeId, desc };
+        el.tableInfoText.textContent = total === 0
+          ? '0 Telegramme gefunden'
+          : `Zeige ${start + 1}–${end} von ${total.toLocaleString('de-DE')} Telegrammen (Zeile anklicken für Byte-Inspektor)`;
+        el.pageIndicator.textContent = `${state.currentPage} / ${totalPages}`;
+        el.prevPageBtn.disabled = state.currentPage <= 1;
+        el.nextPageBtn.disabled = state.currentPage >= totalPages;
+      }
+
+      function showRowInspector(rowIndex) {
+        const row = state.parsedRows.find((r) => r.index === rowIndex);
+        if (!row) return;
+
+        state.selectedRowIndex = rowIndex;
+        el.rowInspector.classList.remove('hidden');
+        el.inspectorTitle.textContent = `Zeile #${row.index} · DS${row.typeId} · ${row.timeFormatted}`;
+        el.inspectorDesc.textContent = row.desc;
+        el.inspectorHex.textContent = row.formattedHex;
+        el.inspectorDecoded.textContent = row.decodedText || '(Keine druckbaren Nutzdaten)';
+
+        if (row.crcValid) {
+          el.inspectorCrc.innerHTML = `<span class="text-emerald-400 font-semibold">Gültig</span> · &lt;CR&gt; (0x0D) vorhanden · Prüfzeichen: <span class="text-sky-300">0x${toHexByte(row.actualCrc)}</span>${row.wasFixed ? ` (repariert von 0x${toHexByte(row.originalCrc)})` : ''}`;
+        } else if (!row.hasCrBeforeChecksum) {
+          el.inspectorCrc.innerHTML = `<span class="text-rose-400 font-semibold">Framing-Fehler</span> · Vorletztes Byte ist 0x${toHexByte(row.bytes[row.bytes.length - 2])} statt &lt;CR&gt; (0x0D)`;
+        } else {
+          el.inspectorCrc.innerHTML = `<span class="text-rose-400 font-semibold">CRC-Fehler</span> · Ist: 0x${toHexByte(row.actualCrc)}, Erwartet: <span class="text-emerald-400">0x${toHexByte(row.expectedCrc)}</span>`;
         }
 
-        // Haupt-Verarbeitungslogik (Byte für Byte aus Hex)
-        function processLog(text) {
-            const lines = text.split(/\r?\n/);
-            let csvRows = [];
-            let previewText = "";
-            let rowIndex = 1;
-            let baseTick = 50619076; 
-            
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-                
-                const parts = line.split(' ');
-                if (parts.length >= 3) {
-                    const rawHex = parts[2];
-                    
-                    let formattedHex = " ";
-                    for(let j=0; j < rawHex.length; j+=2) {
-                        formattedHex += rawHex.substring(j, j+2) + " ";
-                    }
-                    formattedHex = formattedHex.trimRight();
-                    
-                    let exactAscii = "";
-                    for(let j=0; j < rawHex.length; j+=2) {
-                        const byteVal = parseInt(rawHex.substring(j, j+2), 16);
-                        // Erzeuge echtes Line Feed oder Carriage Return, wo nötig.
-                        if (byteVal === 0x0D) {
-                            exactAscii += '\n'; // Wagenbusmonitor erwartet echten Zeilenumbruch hier
-                        } else if (byteVal === 0x0A) {
-                            exactAscii += '\n'; 
-                        } else {
-                            exactAscii += String.fromCharCode(byteVal);
-                        }
-                    }
-                    
-                    const tInfo = getTelegramInfo(exactAscii);
-                    
-                    const escapeCsv = (str) => '"' + str.replace(/"/g, '""') + '"';
-                    
-                    let col1 = '"M"';
-                    let col2 = `"${rowIndex}"`;
-                    let col3 = `"${baseTick}"`;
-                    let col4 = '""';
-                    let col5 = '""';
-                    if (tInfo.typeId === '[021]') col5 = '"X"'; 
-                    
-                    let col6 = escapeCsv(exactAscii);
-                    let col7 = escapeCsv(formattedHex);
-                    let col8 = `"${tInfo.typeId}"`;
-                    let col9 = `"${tInfo.desc}"`;
-                    let col10 = '""';
-                    
-                    if (tInfo.typeId === '[021]' || tInfo.typeId === '020' || tInfo.typeId === '021a') col10 = '"-1"';
-                    
-                    const csvLine = [col1, col2, col3, col4, col5, col6, col7, col8, col9, col10].join(';');
-                    csvRows.push(csvLine);
-                    
-                    if (rowIndex <= 5) {
-                        // Verschönere die Vorschau-Ausgabe, damit Zeilenumbrüche sichtbar, aber nicht kaputt sind
-                        const previewSafeAscii = exactAscii.replace(/\n/g, '↵');
-                        previewText += `<span class="text-indigo-400">Zeile ${rowIndex}</span> │ <span class="text-emerald-400">${tInfo.desc || 'Unbekannt'}</span>\n<span class="text-slate-500">Hex:</span> ${formattedHex}\n<span class="text-slate-500">Ascii:</span> ${previewSafeAscii}\n\n`;
-                    }
-                    
-                    rowIndex++;
-                    baseTick += Math.floor(Math.random() * 800) + 100;
-                }
-            }
-            
-            if (csvRows.length > 0) {
-                csvContent = csvRows.join('\r\n'); // Monitor bevorzugt CRLF
-                preview.innerHTML = previewText;
-            }
+        renderTable();
+      }
+
+      // =========================================================================
+      // 7. Datei-Upload & Testdaten-Generator
+      // =========================================================================
+      function handleFileUpload(file) {
+        if (!file) return;
+        state.originalFileName = file.name;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const ok = processLog(e.target.result);
+          if (ok) {
+            showToast(`"${file.name}" erfolgreich konvertiert (${state.parsedRows.length} Telegramme).`, 'success');
+          }
+        };
+        reader.onerror = () => {
+          showToast('Datei konnte nicht gelesen werden.', 'error');
+        };
+        reader.readAsText(file, 'ISO-8859-1');
+      }
+
+      function generateTestLog(selectedDS) {
+        state.originalFileName = `Testdaten_${selectedDS.toUpperCase()}.log`;
+        const lines = [];
+
+        if (selectedDS === 'mixed_ax') {
+          lines.push(`2026/11/25 08:46:15.100 ${buildValidIbisHex(strToBytes('a8'))}`);
+          lines.push(`2026/11/25 08:46:15.400 ${buildValidIbisHex(strToBytes('d25116'))}`);
+          lines.push(`2026/11/25 08:46:15.520 ${buildValidIbisHex(strToBytes('u0846'))}`);
+          lines.push(`2026/11/25 08:46:15.900 ${buildValidIbisHex(strToBytes('xV+017'))}`);
+          lines.push(`2026/11/25 08:46:16.700 ${buildValidIbisHex([...strToBytes('aX80'), 0x03, ...strToBytes('100'), 0x04, ...strToBytes('Trier Balduinsbrunnen'), 0x05, 0x07, ...strToBytes('0617')])}`);
+          lines.push(`2026/11/25 08:46:17.100 ${buildValidIbisHex([...strToBytes('aX81'), 0x03, ...strToBytes('011'), 0x04, ...strToBytes('B{sch H|henstra~e'), 0x05, 0x07, ...strToBytes('0700')])}`);
+          lines.push(`2026/11/25 08:46:17.500 ${buildValidIbisHex([...strToBytes('aX82'), 0x03, ...strToBytes('024'), 0x04, ...strToBytes('Idar-Oberstein Bahnhof'), 0x05, 0x07, ...strToBytes('0743')])}`);
+        } else if (selectedDS === 'ds003a') {
+          lines.push(`2026/11/25 12:00:00.000 ${buildValidIbisHex(strToBytes('l000'))}`);
+          lines.push(`2026/11/25 12:00:00.500 ${buildValidIbisHex(strToBytes('d25116'))}`);
+          lines.push(`2026/11/25 12:00:01.000 ${buildValidIbisHex(strToBytes('u1200'))}`);
+          lines.push(`2026/11/25 12:00:01.500 ${buildValidIbisHex(strToBytes('z2450'))}`);
+          lines.push(`2026/11/25 12:00:02.000 ${buildValidIbisHex(strToBytes('zI5Sissach Bahnhof     '))}`);
+          lines.push(`2026/11/25 12:00:02.500 ${buildValidIbisHex([...strToBytes('zA4Eptingen'), 0x0A, ...strToBytes('Eptingen'), 0x0A, ...strToBytes('Sissach')])}`);
+          lines.push(`2026/11/25 12:00:03.000 ${buildValidIbisHex(strToBytes('zN000'))}`);
+        } else if (selectedDS === 'ds021') {
+          lines.push(`2026/11/25 12:05:00.000 ${buildValidIbisHex([...strToBytes('aA13Gescher         '), 0x0A, ...strToBytes('Bahnhof')])}`);
+          lines.push(`2026/11/25 12:05:01.000 ${buildValidIbisHex([...strToBytes('aA23Gescher         '), 0x0A, ...strToBytes('Rathaus')])}`);
+        } else if (selectedDS === 'ds021a') {
+          lines.push(`2026/11/25 12:10:00.000 ${buildValidIbisHex([...strToBytes('aL40>'), 0x03, ...strToBytes('01'), 0x04, ...strToBytes('Gymnasium'), 0x05])}`);
+          lines.push(`2026/11/25 12:10:01.000 ${buildValidIbisHex([...strToBytes('aL414'), 0x03, ...strToBytes('02'), 0x04, ...strToBytes('Estern Geldgatt'), 0x05])}`);
+          lines.push(`2026/11/25 12:10:02.000 ${buildValidIbisHex(strToBytes('xI01'))}`);
+        } else if (selectedDS === 'ds021c') {
+          lines.push(`2026/11/25 12:15:00.000 ${buildValidIbisHex(strToBytes('vGymnasium               '))}`);
+          lines.push(`2026/11/25 12:15:01.000 ${buildValidIbisHex([...strToBytes('aL405'), 0x03, ...strToBytes('99'), 0x04, 0x05])}`);
+          lines.push(`2026/11/25 12:15:02.000 ${buildValidIbisHex([...strToBytes('aL415'), 0x03, ...strToBytes('10'), 0x04, ...strToBytes('Gescher, Rathaus'), 0x05])}`);
         }
 
-        // Download als 8-Bit Datei
-        downloadBtn.addEventListener('click', () => {
-            if (!csvContent) return;
-            
-            const bytes = new Uint8Array(csvContent.length);
-            for(let i = 0; i < csvContent.length; i++) {
-                bytes[i] = csvContent.charCodeAt(i) & 0xFF; // Schneidet auf 8-Bit ANSI ab
-            }
-            
-            const blob = new Blob([bytes], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            
-            let baseName = originalFileName.replace(/\.[^/.]+$/, "");
-            if (baseName === "") baseName = "export";
-            
-            link.setAttribute('href', url);
-            link.setAttribute('download', baseName + '.PRO.CSV');
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        if (processLog(lines.join('\n'))) {
+          showToast(`Testdaten (${selectedDS.toUpperCase()}) geladen.`, 'success');
+        }
+      }
+
+      // =========================================================================
+      // 8. Export als 8-Bit-ANSI-Datei (.PRO.CSV)
+      // =========================================================================
+      function downloadProCsv() {
+        if (!state.csvContent) return;
+        try {
+          // Exakte 8-Bit-Ausgabe ohne UTF-8-Multibyte-Konvertierung
+          const bytes = new Uint8Array(state.csvContent.length);
+          for (let i = 0; i < state.csvContent.length; i++) {
+            bytes[i] = state.csvContent.charCodeAt(i) & 0xFF;
+          }
+
+          const blob = new Blob([bytes], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+
+          let baseName = state.originalFileName.replace(/(\.pro\.csv|\.[^/.]+)$/i, '');
+          if (!baseName) baseName = 'export';
+
+          link.href = url;
+          link.download = `${baseName}.PRO.CSV`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+          showToast(`"${baseName}.PRO.CSV" wurde gespeichert.`, 'success');
+        } catch (err) {
+          showToast('Download fehlgeschlagen: ' + err.message, 'error');
+        }
+      }
+
+      // =========================================================================
+      // 9. Event-Listener & Theme-Initialisierung
+      // =========================================================================
+      function applyTheme(dark) {
+        document.documentElement.classList.toggle('dark', dark);
+        el.sunIcon.classList.toggle('hidden', !dark);
+        el.moonIcon.classList.toggle('hidden', dark);
+        try { localStorage.setItem('ibis_theme', dark ? 'dark' : 'light'); } catch (_) {}
+      }
+
+      // Gespeichertes Theme oder Systempräferenz laden
+      let savedTheme = null;
+      try { savedTheme = localStorage.getItem('ibis_theme'); } catch (_) {}
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(savedTheme ? savedTheme === 'dark' : prefersDark);
+
+      el.themeToggleBtn.addEventListener('click', () => {
+        applyTheme(!document.documentElement.classList.contains('dark'));
+      });
+
+      // Tabs umschalten
+      el.tabFileBtn.addEventListener('click', () => {
+        el.dropZone.classList.remove('hidden');
+        el.pasteZone.classList.add('hidden');
+        el.pasteZone.classList.remove('flex');
+        el.tabFileBtn.className = 'px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm transition-all';
+        el.tabPasteBtn.className = 'px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all';
+      });
+
+      el.tabPasteBtn.addEventListener('click', () => {
+        el.dropZone.classList.add('hidden');
+        el.pasteZone.classList.remove('hidden');
+        el.pasteZone.classList.add('flex');
+        el.tabPasteBtn.className = 'px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm transition-all';
+        el.tabFileBtn.className = 'px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all';
+      });
+
+      // Datei-Input & Drag-and-Drop
+      el.fileInput.addEventListener('change', () => {
+        if (el.fileInput.files.length > 0) {
+          handleFileUpload(el.fileInput.files[0]);
+          el.fileInput.value = '';
+        }
+      });
+
+      el.dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        el.dropZone.classList.add('border-indigo-500', 'bg-indigo-50/80', 'dark:bg-indigo-950/40');
+      });
+
+      el.dropZone.addEventListener('dragleave', () => {
+        el.dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/80', 'dark:bg-indigo-950/40');
+      });
+
+      el.dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        el.dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/80', 'dark:bg-indigo-950/40');
+        if (e.dataTransfer.files.length > 0) {
+          handleFileUpload(e.dataTransfer.files[0]);
+        }
+      });
+
+      // Direkt eingefügtes Log verarbeiten
+      el.parsePasteBtn.addEventListener('click', () => {
+        const text = el.rawLogInput.value.trim();
+        if (!text) {
+          showToast('Bitte zuerst Log-Zeilen einfügen.', 'warning');
+          return;
+        }
+        state.originalFileName = 'Eingefuegtes_Log.log';
+        if (processLog(text)) {
+          showToast(`Eingefügtes Log konvertiert (${state.parsedRows.length} Telegramme).`, 'success');
+        }
+      });
+
+      // Optionen live neu berechnen, wenn bereits ein Log geladen ist
+      [el.timestampMode, el.autoFixCrc, el.markErrorsInCsv].forEach((ctrl) => {
+        ctrl.addEventListener('change', () => {
+          if (state.rawInputText) {
+            processLog(state.rawInputText);
+            showToast('Einstellungen angewendet und CSV aktualisiert.', 'info');
+          }
         });
-    </script>
+      });
+
+      // Testdaten
+      el.generateTestBtn.addEventListener('click', () => {
+        generateTestLog(el.testDataSelect.value);
+      });
+
+      // Export & Kopieren
+      el.downloadBtn.addEventListener('click', downloadProCsv);
+
+      el.copyCsvBtn.addEventListener('click', () => {
+        if (!state.csvContent) return;
+        try {
+          // Kompatibles Kopieren ohne navigator.clipboard-iFrame-Probleme
+          const helperArea = document.createElement('textarea');
+          helperArea.value = state.csvContent;
+          helperArea.style.position = 'fixed';
+          helperArea.style.opacity = '0';
+          document.body.appendChild(helperArea);
+          helperArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(helperArea);
+          showToast('Kopiert – Hinweis: Für WBMonitor bitte immer "Als .PRO.CSV speichern" nutzen, damit <CR> (0x0D) erhalten bleibt!', 'warning');
+        } catch (_) {
+          showToast('Kopieren in die Zwischenablage nicht möglich.', 'error');
+        }
+      });
+
+      // Filter, Suche & Pagination
+      el.searchInput.addEventListener('input', () => {
+        state.currentPage = 1;
+        applyFiltersAndRender();
+      });
+
+      el.onlyErrorsToggle.addEventListener('change', () => {
+        state.currentPage = 1;
+        applyFiltersAndRender();
+      });
+
+      el.pageSizeSelect.addEventListener('change', () => {
+        state.pageSize = parseInt(el.pageSizeSelect.value, 10);
+        state.currentPage = 1;
+        renderTable();
+      });
+
+      el.typeFilterBar.addEventListener('click', (e) => {
+        const btn = e.target.closest('.type-pill');
+        if (!btn) return;
+        state.activeTypeFilter = btn.dataset.type;
+        state.currentPage = 1;
+        renderTypeFilters();
+        applyFiltersAndRender();
+      });
+
+      el.prevPageBtn.addEventListener('click', () => {
+        if (state.currentPage > 1) {
+          state.currentPage--;
+          renderTable();
+        }
+      });
+
+      el.nextPageBtn.addEventListener('click', () => {
+        const totalPages = Math.max(1, Math.ceil(state.filteredRows.length / state.pageSize));
+        if (state.currentPage < totalPages) {
+          state.currentPage++;
+          renderTable();
+        }
+      });
+
+      // Klick auf Tabellenzeile öffnet Byte-Inspektor
+      el.previewTableBody.addEventListener('click', (e) => {
+        const tr = e.target.closest('tr[data-row-index]');
+        if (!tr) return;
+        showRowInspector(parseInt(tr.dataset.rowIndex, 10));
+      });
+
+      el.closeInspectorBtn.addEventListener('click', () => {
+        state.selectedRowIndex = null;
+        el.rowInspector.classList.add('hidden');
+        renderTable();
+      });
+    })();
+  </script>
 </body>
 </html>
